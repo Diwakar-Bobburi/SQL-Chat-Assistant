@@ -1,0 +1,317 @@
+[
+  {
+    "id": "e01",
+    "difficulty": "easy",
+    "question": "How many customers are there?",
+    "gold_sql": "SELECT COUNT(*) FROM customers",
+    "order_matters": false
+  },
+  {
+    "id": "e02",
+    "difficulty": "easy",
+    "question": "How many orders were cancelled?",
+    "gold_sql": "SELECT COUNT(*) FROM orders WHERE status = 'cancelled'",
+    "order_matters": false
+  },
+  {
+    "id": "e03",
+    "difficulty": "easy",
+    "question": "List the names of all products in the Books category.",
+    "gold_sql": "SELECT p.name FROM products p JOIN categories c ON c.category_id = p.category_id WHERE c.name = 'Books'",
+    "order_matters": false
+  },
+  {
+    "id": "e04",
+    "difficulty": "easy",
+    "question": "How many customers are from Germany?",
+    "gold_sql": "SELECT COUNT(*) FROM customers WHERE country = 'Germany'",
+    "order_matters": false
+  },
+  {
+    "id": "e05",
+    "difficulty": "easy",
+    "question": "What is the most expensive product? Return its name and price.",
+    "gold_sql": "SELECT name, price FROM products ORDER BY price DESC LIMIT 1",
+    "order_matters": false
+  },
+  {
+    "id": "e06",
+    "difficulty": "easy",
+    "question": "How many products are in each category? Return the category name and the product count.",
+    "gold_sql": "SELECT c.name, COUNT(*) FROM products p JOIN categories c ON c.category_id = p.category_id GROUP BY c.category_id, c.name",
+    "order_matters": false
+  },
+  {
+    "id": "e07",
+    "difficulty": "easy",
+    "question": "What is the average product price?",
+    "gold_sql": "SELECT AVG(price) FROM products",
+    "order_matters": false
+  },
+  {
+    "id": "e08",
+    "difficulty": "easy",
+    "question": "How many orders were placed in 2024?",
+    "gold_sql": "SELECT COUNT(*) FROM orders WHERE strftime('%Y', order_date) = '2024'",
+    "order_matters": false
+  },
+  {
+    "id": "e09",
+    "difficulty": "easy",
+    "question": "List the names of employees who have no manager.",
+    "gold_sql": "SELECT name FROM employees WHERE manager_id IS NULL",
+    "order_matters": false
+  },
+  {
+    "id": "e10",
+    "difficulty": "easy",
+    "question": "Which cities in India do our customers come from? Return each city once.",
+    "gold_sql": "SELECT DISTINCT city FROM customers WHERE country = 'India'",
+    "order_matters": false
+  },
+  {
+    "id": "e11",
+    "difficulty": "easy",
+    "question": "How many reviews have a rating of 5?",
+    "gold_sql": "SELECT COUNT(*) FROM reviews WHERE rating = 5",
+    "order_matters": false
+  },
+  {
+    "id": "e12",
+    "difficulty": "easy",
+    "question": "How many customers signed up in 2025?",
+    "gold_sql": "SELECT COUNT(*) FROM customers WHERE strftime('%Y', signup_date) = '2025'",
+    "order_matters": false
+  },
+  {
+    "id": "e13",
+    "difficulty": "easy",
+    "question": "List the 5 cheapest products with their prices, cheapest first.",
+    "gold_sql": "SELECT name, price FROM products ORDER BY price ASC LIMIT 5",
+    "order_matters": true
+  },
+  {
+    "id": "e14",
+    "difficulty": "easy",
+    "question": "How many customers are in each segment? Return the segment and the count.",
+    "gold_sql": "SELECT segment, COUNT(*) FROM customers GROUP BY segment",
+    "order_matters": false
+  },
+  {
+    "id": "e15",
+    "difficulty": "easy",
+    "question": "What is the date of the earliest order?",
+    "gold_sql": "SELECT MIN(order_date) FROM orders",
+    "order_matters": false
+  },
+  {
+    "id": "m01",
+    "difficulty": "medium",
+    "question": "What is our total revenue?",
+    "gold_sql": "SELECT SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) FROM order_items oi JOIN orders o ON o.order_id = oi.order_id WHERE o.status IN ('delivered', 'shipped')",
+    "order_matters": false
+  },
+  {
+    "id": "m02",
+    "difficulty": "medium",
+    "question": "What is the revenue of each category? Return the category name and revenue, highest revenue first.",
+    "gold_sql": "SELECT c.name, SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) AS revenue FROM order_items oi JOIN orders o ON o.order_id = oi.order_id JOIN products p ON p.product_id = oi.product_id JOIN categories c ON c.category_id = p.category_id WHERE o.status IN ('delivered', 'shipped') GROUP BY c.category_id, c.name ORDER BY revenue DESC",
+    "order_matters": true
+  },
+  {
+    "id": "m03",
+    "difficulty": "medium",
+    "question": "Which 5 customers placed the most orders (any status)? Return first name, last name and number of orders, most orders first.",
+    "gold_sql": "SELECT c.first_name, c.last_name, COUNT(*) AS n FROM orders o JOIN customers c ON c.customer_id = o.customer_id GROUP BY c.customer_id, c.first_name, c.last_name ORDER BY n DESC LIMIT 5",
+    "order_matters": false
+  },
+  {
+    "id": "m04",
+    "difficulty": "medium",
+    "question": "What is the average review rating for each category? Return category name and average rating.",
+    "gold_sql": "SELECT c.name, AVG(r.rating) FROM reviews r JOIN products p ON p.product_id = r.product_id JOIN categories c ON c.category_id = p.category_id GROUP BY c.category_id, c.name",
+    "order_matters": false
+  },
+  {
+    "id": "m05",
+    "difficulty": "medium",
+    "question": "How many orders did each sales region handle? Return region and number of orders.",
+    "gold_sql": "SELECT e.region, COUNT(*) FROM orders o JOIN employees e ON e.employee_id = o.employee_id GROUP BY e.region",
+    "order_matters": false
+  },
+  {
+    "id": "m06",
+    "difficulty": "medium",
+    "question": "What was the revenue for each month of 2024? Return the month as 'YYYY-MM' and the revenue, in chronological order.",
+    "gold_sql": "SELECT strftime('%Y-%m', o.order_date) AS month, SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) FROM order_items oi JOIN orders o ON o.order_id = oi.order_id WHERE o.status IN ('delivered', 'shipped') AND strftime('%Y', o.order_date) = '2024' GROUP BY month ORDER BY month",
+    "order_matters": true
+  },
+  {
+    "id": "m07",
+    "difficulty": "medium",
+    "question": "How many customers have never written a review?",
+    "gold_sql": "SELECT COUNT(*) FROM customers c WHERE NOT EXISTS (SELECT 1 FROM reviews r WHERE r.customer_id = c.customer_id)",
+    "order_matters": false
+  },
+  {
+    "id": "m08",
+    "difficulty": "medium",
+    "question": "How many customers have never placed an order?",
+    "gold_sql": "SELECT COUNT(*) FROM customers c WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.customer_id)",
+    "order_matters": false
+  },
+  {
+    "id": "m09",
+    "difficulty": "medium",
+    "question": "What is our average order value?",
+    "gold_sql": "SELECT SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) / COUNT(DISTINCT o.order_id) FROM order_items oi JOIN orders o ON o.order_id = oi.order_id WHERE o.status IN ('delivered', 'shipped')",
+    "order_matters": false
+  },
+  {
+    "id": "m10",
+    "difficulty": "medium",
+    "question": "List the first and last names of Corporate segment customers who live in Bengaluru.",
+    "gold_sql": "SELECT first_name, last_name FROM customers WHERE city = 'Bengaluru' AND segment = 'Corporate'",
+    "order_matters": false
+  },
+  {
+    "id": "m11",
+    "difficulty": "medium",
+    "question": "Which customer country generates the most revenue? Return the country and its revenue.",
+    "gold_sql": "SELECT c.country, SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) AS revenue FROM order_items oi JOIN orders o ON o.order_id = oi.order_id JOIN customers c ON c.customer_id = o.customer_id WHERE o.status IN ('delivered', 'shipped') GROUP BY c.country ORDER BY revenue DESC LIMIT 1",
+    "order_matters": false
+  },
+  {
+    "id": "m12",
+    "difficulty": "medium",
+    "question": "For each order status, how many orders are there and what percentage of all orders is that? Return status, count and percentage.",
+    "gold_sql": "SELECT status, COUNT(*), 100.0 * COUNT(*) / (SELECT COUNT(*) FROM orders) FROM orders GROUP BY status",
+    "order_matters": false
+  },
+  {
+    "id": "m13",
+    "difficulty": "medium",
+    "question": "Which products have at least 20 reviews and an average rating below 3.9? Return product name and average rating.",
+    "gold_sql": "SELECT p.name, AVG(r.rating) FROM reviews r JOIN products p ON p.product_id = r.product_id GROUP BY p.product_id, p.name HAVING COUNT(*) >= 20 AND AVG(r.rating) < 3.9",
+    "order_matters": false
+  },
+  {
+    "id": "m14",
+    "difficulty": "medium",
+    "question": "How many distinct products has the customer with id 17 ever ordered, across all their orders?",
+    "gold_sql": "SELECT COUNT(DISTINCT oi.product_id) FROM order_items oi JOIN orders o ON o.order_id = oi.order_id WHERE o.customer_id = 17",
+    "order_matters": false
+  },
+  {
+    "id": "m15",
+    "difficulty": "medium",
+    "question": "How many units of each Electronics product were sold? Return product name and units sold.",
+    "gold_sql": "SELECT p.name, SUM(oi.quantity) FROM order_items oi JOIN orders o ON o.order_id = oi.order_id JOIN products p ON p.product_id = oi.product_id JOIN categories c ON c.category_id = p.category_id WHERE o.status IN ('delivered', 'shipped') AND c.name = 'Electronics' GROUP BY p.product_id, p.name",
+    "order_matters": false
+  },
+  {
+    "id": "m16",
+    "difficulty": "medium",
+    "question": "Which employees handled more than 230 orders (any status)? Return employee name and number of orders.",
+    "gold_sql": "SELECT e.name, COUNT(*) FROM orders o JOIN employees e ON e.employee_id = o.employee_id GROUP BY e.employee_id, e.name HAVING COUNT(*) > 230",
+    "order_matters": false
+  },
+  {
+    "id": "m17",
+    "difficulty": "medium",
+    "question": "What is the gross profit of each category? Return the category name and gross profit, highest first.",
+    "gold_sql": "SELECT c.name, SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) - SUM(oi.quantity * p.cost) AS gp FROM order_items oi JOIN orders o ON o.order_id = oi.order_id JOIN products p ON p.product_id = oi.product_id JOIN categories c ON c.category_id = p.category_id WHERE o.status IN ('delivered', 'shipped') GROUP BY c.category_id, c.name ORDER BY gp DESC",
+    "order_matters": true
+  },
+  {
+    "id": "m18",
+    "difficulty": "medium",
+    "question": "What percentage of all orders had a discount on at least one item?",
+    "gold_sql": "SELECT 100.0 * COUNT(DISTINCT CASE WHEN oi.discount > 0 THEN oi.order_id END) / (SELECT COUNT(*) FROM orders) FROM order_items oi",
+    "order_matters": false
+  },
+  {
+    "id": "h01",
+    "difficulty": "hard",
+    "question": "For each year, what was the revenue and the year-over-year growth in percent? Return year, revenue and growth percentage (NULL for the first year), in chronological order.",
+    "gold_sql": "WITH y AS (SELECT strftime('%Y', o.order_date) AS yr, SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) AS rev FROM order_items oi JOIN orders o ON o.order_id = oi.order_id WHERE o.status IN ('delivered', 'shipped') GROUP BY yr) SELECT yr, rev, 100.0 * (rev - LAG(rev) OVER (ORDER BY yr)) / LAG(rev) OVER (ORDER BY yr) FROM y ORDER BY yr",
+    "order_matters": true
+  },
+  {
+    "id": "h02",
+    "difficulty": "hard",
+    "question": "Who are the top 2 customers by revenue in each country? Return country, first name, last name and revenue.",
+    "gold_sql": "WITH cr AS (SELECT c.country, c.first_name, c.last_name, SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) AS rev, ROW_NUMBER() OVER (PARTITION BY c.country ORDER BY SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) DESC) AS rn FROM order_items oi JOIN orders o ON o.order_id = oi.order_id JOIN customers c ON c.customer_id = o.customer_id WHERE o.status IN ('delivered', 'shipped') GROUP BY c.customer_id) SELECT country, first_name, last_name, rev FROM cr WHERE rn <= 2",
+    "order_matters": false
+  },
+  {
+    "id": "h03",
+    "difficulty": "hard",
+    "question": "Which sales rep generated the most revenue in each region? Return region, rep name and revenue.",
+    "gold_sql": "WITH er AS (SELECT e.region, e.name, SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) AS rev, RANK() OVER (PARTITION BY e.region ORDER BY SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) DESC) AS rk FROM order_items oi JOIN orders o ON o.order_id = oi.order_id JOIN employees e ON e.employee_id = o.employee_id WHERE o.status IN ('delivered', 'shipped') AND e.manager_id IS NOT NULL GROUP BY e.employee_id) SELECT region, name, rev FROM er WHERE rk = 1",
+    "order_matters": false
+  },
+  {
+    "id": "h04",
+    "difficulty": "hard",
+    "question": "For every sales rep, show the rep's name and their manager's name.",
+    "gold_sql": "SELECT e.name, m.name FROM employees e JOIN employees m ON m.employee_id = e.manager_id",
+    "order_matters": false
+  },
+  {
+    "id": "h05",
+    "difficulty": "hard",
+    "question": "How many customers placed at least one order in each of the years 2023, 2024 and 2025?",
+    "gold_sql": "SELECT COUNT(*) FROM (SELECT customer_id FROM orders WHERE strftime('%Y', order_date) IN ('2023','2024','2025') GROUP BY customer_id HAVING COUNT(DISTINCT strftime('%Y', order_date)) = 3)",
+    "order_matters": false
+  },
+  {
+    "id": "h06",
+    "difficulty": "hard",
+    "question": "On average, how many days pass between a customer's signup date and their first order?",
+    "gold_sql": "SELECT AVG(julianday(f.first_order) - julianday(c.signup_date)) FROM customers c JOIN (SELECT customer_id, MIN(order_date) AS first_order FROM orders GROUP BY customer_id) f ON f.customer_id = c.customer_id",
+    "order_matters": false
+  },
+  {
+    "id": "h07",
+    "difficulty": "hard",
+    "question": "Among products that had revenue in both 2024 and 2025, which had 2025 revenue more than three times their 2024 revenue? Return product name, 2024 revenue and 2025 revenue.",
+    "gold_sql": "SELECT p.name, SUM(CASE WHEN strftime('%Y', o.order_date) = '2024' THEN oi.quantity * oi.unit_price * (1 - oi.discount) ELSE 0 END) AS r24, SUM(CASE WHEN strftime('%Y', o.order_date) = '2025' THEN oi.quantity * oi.unit_price * (1 - oi.discount) ELSE 0 END) AS r25 FROM order_items oi JOIN orders o ON o.order_id = oi.order_id JOIN products p ON p.product_id = oi.product_id WHERE o.status IN ('delivered', 'shipped') GROUP BY p.product_id, p.name HAVING r24 > 0 AND r25 > 3 * r24",
+    "order_matters": false
+  },
+  {
+    "id": "h08",
+    "difficulty": "hard",
+    "question": "What percentage of total revenue comes from the top 10 customers by revenue?",
+    "gold_sql": "WITH cr AS (SELECT o.customer_id, SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) AS rev FROM order_items oi JOIN orders o ON o.order_id = oi.order_id WHERE o.status IN ('delivered', 'shipped') GROUP BY o.customer_id) SELECT 100.0 * (SELECT SUM(rev) FROM (SELECT rev FROM cr ORDER BY rev DESC LIMIT 10)) / (SELECT SUM(rev) FROM cr)",
+    "order_matters": false
+  },
+  {
+    "id": "h09",
+    "difficulty": "hard",
+    "question": "In each category, which product has the highest average rating among products with at least 15 reviews? Return category name, product name and average rating.",
+    "gold_sql": "WITH pr AS (SELECT c.name AS cat, p.name AS prod, AVG(r.rating) AS avg_r, RANK() OVER (PARTITION BY c.category_id ORDER BY AVG(r.rating) DESC) AS rk FROM reviews r JOIN products p ON p.product_id = r.product_id JOIN categories c ON c.category_id = p.category_id GROUP BY p.product_id HAVING COUNT(*) >= 15) SELECT cat, prod, avg_r FROM pr WHERE rk = 1",
+    "order_matters": false
+  },
+  {
+    "id": "h10",
+    "difficulty": "hard",
+    "question": "Among customers who have placed at least one order (any status), what percentage placed more than 10 orders?",
+    "gold_sql": "SELECT 100.0 * SUM(CASE WHEN n > 10 THEN 1 ELSE 0 END) / COUNT(*) FROM (SELECT customer_id, COUNT(*) AS n FROM orders GROUP BY customer_id)",
+    "order_matters": false
+  },
+  {
+    "id": "h11",
+    "difficulty": "hard",
+    "question": "How many active customers have revenue above the average revenue per active customer?",
+    "gold_sql": "WITH cr AS (SELECT o.customer_id, SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) AS rev FROM order_items oi JOIN orders o ON o.order_id = oi.order_id WHERE o.status IN ('delivered', 'shipped') GROUP BY o.customer_id) SELECT COUNT(*) FROM cr WHERE rev > (SELECT AVG(rev) FROM cr)",
+    "order_matters": false
+  },
+  {
+    "id": "h12",
+    "difficulty": "hard",
+    "question": "Show the cumulative (running total) revenue by month for 2025. Return the month as 'YYYY-MM' and the running total, in chronological order.",
+    "gold_sql": "WITH m AS (SELECT strftime('%Y-%m', o.order_date) AS month, SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) AS rev FROM order_items oi JOIN orders o ON o.order_id = oi.order_id WHERE o.status IN ('delivered', 'shipped') AND strftime('%Y', o.order_date) = '2025' GROUP BY month) SELECT month, SUM(rev) OVER (ORDER BY month) FROM m ORDER BY month",
+    "order_matters": true
+  }
+]

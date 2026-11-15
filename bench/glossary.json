@@ -1,0 +1,9 @@
+[
+  {"term": "revenue", "definition": "SUM(order_items.quantity * order_items.unit_price * (1 - order_items.discount)), counting only orders with status 'delivered' or 'shipped' (cancelled and returned orders are excluded).", "tables": ["order_items", "orders"]},
+  {"term": "gross profit", "definition": "revenue minus SUM(order_items.quantity * products.cost), over the same delivered/shipped orders.", "tables": ["order_items", "orders", "products"]},
+  {"term": "units sold", "definition": "SUM(order_items.quantity) over orders with status 'delivered' or 'shipped'.", "tables": ["order_items", "orders"]},
+  {"term": "average order value", "definition": "revenue divided by the number of distinct delivered/shipped orders. Also called AOV.", "tables": ["order_items", "orders"]},
+  {"term": "active customer", "definition": "a customer with at least one order whose status is 'delivered' or 'shipped'.", "tables": ["customers", "orders"]},
+  {"term": "sales rep", "definition": "an employee whose manager_id is not NULL. Employees with NULL manager_id are regional managers.", "tables": ["employees"]},
+  {"term": "region", "definition": "employees.region; an order's region is the region of the employee who handled it (orders.employee_id).", "tables": ["employees", "orders"]}
+]

@@ -1,0 +1,6 @@
+__pycache__/
+.pytest_cache/
+.env
+bench/retail.db
+bench/questions_spider.json
+spider/
