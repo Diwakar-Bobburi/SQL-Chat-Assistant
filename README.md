@@ -1,5 +1,7 @@
 # SQL Chat Assistant v2: a text-to-SQL agent you can measure
 
+**[▶ Live demo](https://sql-chat-assistant-diwakar.streamlit.app/)** · Benchmark: 64.4% → **100%** execution accuracy (gpt-oss-120b, 45 questions)
+
 Ask a database questions in plain English. The agent writes SQLite, checks that the query is safe, runs it read-only and fixes its own mistakes. A benchmark measures how often it gets the answer right.
 
 **v1** wrapped LangChain's `create_sql_agent`. It worked, but I couldn't measure how well, or explain why it failed.
