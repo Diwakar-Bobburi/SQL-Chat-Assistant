@@ -187,3 +187,46 @@ def test_daily_limit_stops_run_and_resume_finishes_it(tmp_path, monkeypatch):
     assert len(recs) == 6 and all(r["correct"] for r in recs)
     assert budget["calls"] == 97                                        # only the 3 missing ones re-ran
     assert "Incomplete" not in (tmp_path / "report.md").read_text(encoding="utf-8")
+
+
+# ---------------------------------------------------------------- charts and dashboards
+def test_chart_selection():
+    import pandas as pd
+    from sqlagent.viz import suggest_chart
+    kpi = suggest_chart(pd.DataFrame({"revenue": [1.0], "orders": [3]}))
+    assert kpi.kind == "kpi" and kpi.y == ["revenue", "orders"]
+    labeled = suggest_chart(pd.DataFrame({"country": ["India"], "revenue": [5.0]}))
+    assert labeled.kind == "kpi" and labeled.x == "country"
+    line = suggest_chart(pd.DataFrame({"month": ["2024-01", "2024-02"], "rev": [1e5, 2e5], "growth": [None, 100.0]}))
+    assert line.kind == "line" and line.y == ["rev"]          # growth % is on another scale: dropped
+    bar = suggest_chart(pd.DataFrame({"cat": ["a", "b", "c"], "r24": [10, 20, 30], "r25": [15, 25, 35]}))
+    assert bar.kind == "bar" and bar.y == ["r24", "r25"]      # same scale: grouped
+    assert suggest_chart(pd.DataFrame({"x": [1, 2, 3], "y": [2, 4, 6]})).kind == "scatter"
+    assert suggest_chart(pd.DataFrame({"a": ["x", "x"], "b": ["y", "z"]})) is None
+    assert suggest_chart(pd.DataFrame()) is None
+
+
+def test_overview_dashboard_runs_with_and_without_year(db):
+    from sqlagent.dashboard import filter_options, load_dashboard, run_tile
+    ex = Executor(db)
+    dash = load_dashboard(Path(__file__).resolve().parent.parent / "dashboards" / "overview.json")
+    assert filter_options(ex, dash, "year") == ["2023", "2024", "2025"]
+    for year in (None, "2024"):
+        for tile in dash.tiles:
+            r = run_tile(ex, tile, {"year": year})
+            assert r.error is None and not r.df.empty and r.chart is not None, (tile.title, year)
+    kpi = run_tile(ex, dash.tiles[0], {"year": "2024"})
+    assert kpi.previous is not None                            # year-over-year comparison
+    total = run_tile(ex, dash.tiles[0], {"year": None}).df.iloc[0]["Revenue"]
+    gold = ex.run(json.loads((BENCH / "questions.json").read_text(encoding="utf-8"))[15]["gold_sql"]).rows[0][0]
+    assert total == pytest.approx(gold, abs=0.01)               # dashboard revenue == benchmark m01
+
+
+def test_dashboard_import_rejects_unsafe_sql():
+    from sqlagent.dashboard import Dashboard, Tile, parse_dashboard
+    with pytest.raises(ValueError, match="rejected"):
+        parse_dashboard({"tiles": [{"title": "x", "sql": "DROP TABLE orders"}]})
+    with pytest.raises(ValueError):
+        parse_dashboard("not json")
+    round_trip = parse_dashboard(Dashboard("d", [Tile("t", "SELECT 1")]).to_json())
+    assert round_trip.tiles[0].sql == "SELECT 1"

@@ -35,7 +35,7 @@ class Executor:
         conn.execute("PRAGMA query_only = ON")
         return conn
 
-    def run(self, sql: str, max_rows: int | None = None) -> QueryResult:
+    def run(self, sql: str, max_rows: int | None = None, params: dict | None = None) -> QueryResult:
         cap = self.max_rows if max_rows is None else max_rows
         start = time.perf_counter()
         deadline = start + self.timeout_s
@@ -43,7 +43,7 @@ class Executor:
         # Returning non-zero from the progress handler aborts the running statement.
         conn.set_progress_handler(lambda: int(time.perf_counter() > deadline), 10_000)
         try:
-            cur = conn.execute(sql)
+            cur = conn.execute(sql, params or {})
             columns = [d[0] for d in cur.description or []]
             rows = cur.fetchmany(cap + 1)
             truncated = len(rows) > cap

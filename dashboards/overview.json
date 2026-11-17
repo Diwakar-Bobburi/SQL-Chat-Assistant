@@ -1,0 +1,60 @@
+{
+  "title": "Business overview",
+  "description": "Fixed SQL, no AI calls, so this view always works. Revenue follows the glossary: delivered and shipped orders only.",
+  "filters": {
+    "year": {
+      "label": "Year",
+      "options_sql": "SELECT DISTINCT strftime('%Y', order_date) AS y FROM orders ORDER BY y"
+    }
+  },
+  "tiles": [
+    {
+      "title": "Key figures",
+      "width": "full",
+      "compare_previous": true,
+      "chart": {
+        "kind": "kpi",
+        "x": null,
+        "y": [
+          "Revenue",
+          "Orders",
+          "Customers",
+          "Avg order value"
+        ]
+      },
+      "caption": "Delivered/shipped orders. With a year selected, arrows compare with the previous year.",
+      "sql": "SELECT ROUND(SUM(oi.quantity * oi.unit_price * (1 - oi.discount)), 2) AS \"Revenue\", COUNT(DISTINCT o.order_id) AS \"Orders\", COUNT(DISTINCT o.customer_id) AS \"Customers\", ROUND(SUM(oi.quantity * oi.unit_price * (1 - oi.discount)) / COUNT(DISTINCT o.order_id), 2) AS \"Avg order value\" FROM order_items oi JOIN orders o ON o.order_id = oi.order_id WHERE o.status IN ('delivered', 'shipped') AND (:year IS NULL OR strftime('%Y', o.order_date) = :year)"
+    },
+    {
+      "title": "Revenue by month",
+      "width": "full",
+      "sql": "SELECT strftime('%Y-%m', o.order_date) AS month, ROUND(SUM(oi.quantity * oi.unit_price * (1 - oi.discount)), 2) AS revenue FROM order_items oi JOIN orders o ON o.order_id = oi.order_id WHERE o.status IN ('delivered', 'shipped') AND (:year IS NULL OR strftime('%Y', o.order_date) = :year) GROUP BY month ORDER BY month"
+    },
+    {
+      "title": "Revenue by category",
+      "sql": "SELECT c.name AS category, ROUND(SUM(oi.quantity * oi.unit_price * (1 - oi.discount)), 2) AS revenue FROM order_items oi JOIN orders o ON o.order_id = oi.order_id JOIN products p ON p.product_id = oi.product_id JOIN categories c ON c.category_id = p.category_id WHERE o.status IN ('delivered', 'shipped') AND (:year IS NULL OR strftime('%Y', o.order_date) = :year) GROUP BY c.name ORDER BY revenue DESC"
+    },
+    {
+      "title": "Top 10 products",
+      "sql": "SELECT p.name AS product, ROUND(SUM(oi.quantity * oi.unit_price * (1 - oi.discount)), 2) AS revenue FROM order_items oi JOIN orders o ON o.order_id = oi.order_id JOIN products p ON p.product_id = oi.product_id WHERE o.status IN ('delivered', 'shipped') AND (:year IS NULL OR strftime('%Y', o.order_date) = :year) GROUP BY p.product_id, p.name ORDER BY revenue DESC LIMIT 10"
+    },
+    {
+      "title": "Revenue by customer country",
+      "sql": "SELECT cu.country, ROUND(SUM(oi.quantity * oi.unit_price * (1 - oi.discount)), 2) AS revenue FROM order_items oi JOIN orders o ON o.order_id = oi.order_id JOIN customers cu ON cu.customer_id = o.customer_id WHERE o.status IN ('delivered', 'shipped') AND (:year IS NULL OR strftime('%Y', o.order_date) = :year) GROUP BY cu.country ORDER BY revenue DESC"
+    },
+    {
+      "title": "Revenue by sales region",
+      "sql": "SELECT e.region, ROUND(SUM(oi.quantity * oi.unit_price * (1 - oi.discount)), 2) AS revenue FROM order_items oi JOIN orders o ON o.order_id = oi.order_id JOIN employees e ON e.employee_id = o.employee_id WHERE o.status IN ('delivered', 'shipped') AND (:year IS NULL OR strftime('%Y', o.order_date) = :year) GROUP BY e.region ORDER BY revenue DESC"
+    },
+    {
+      "title": "Orders by status",
+      "caption": "All orders, including cancelled and returned.",
+      "sql": "SELECT o.status, COUNT(*) AS orders FROM orders o WHERE (:year IS NULL OR strftime('%Y', o.order_date) = :year) GROUP BY o.status ORDER BY orders DESC"
+    },
+    {
+      "title": "Average rating by category",
+      "caption": "Reviews written in the selected year.",
+      "sql": "SELECT c.name AS category, ROUND(AVG(r.rating), 2) AS avg_rating FROM reviews r JOIN products p ON p.product_id = r.product_id JOIN categories c ON c.category_id = p.category_id WHERE (:year IS NULL OR strftime('%Y', r.review_date) = :year) GROUP BY c.name ORDER BY avg_rating DESC"
+    }
+  ]
+}

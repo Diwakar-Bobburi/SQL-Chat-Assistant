@@ -11,11 +11,14 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from sqlagent import PRESETS, GroqClient, SQLAgent, load_glossary
+from sqlagent import PRESETS, Executor, GroqClient, SQLAgent, load_glossary
+from sqlagent.dashboard import Dashboard, Tile, filter_options, load_dashboard, parse_dashboard, run_tile
+from sqlagent.viz import ChartSpec, build_chart, fmt_number, suggest_chart
 
 ROOT = Path(__file__).parent
 DEMO_DB = ROOT / "bench" / "retail.db"
 GLOSSARY = ROOT / "bench" / "glossary.json"
+OVERVIEW = ROOT / "dashboards" / "overview.json"
 
 st.set_page_config(page_title="SQL Chat Assistant v2", page_icon="🗄️", layout="wide")
 
@@ -55,25 +58,90 @@ def get_agent(db: str, preset: str, model: str, use_glossary: bool) -> SQLAgent:
                     glossary=load_glossary(GLOSSARY) if use_glossary else [])
 
 
-chat_tab, schema_tab, bench_tab = st.tabs(["Ask", "Schema", "Benchmark"])
+if "history" not in st.session_state:
+    st.session_state.history = []
+if "pins" not in st.session_state:
+    st.session_state.pins: list[Tile] = []
+
+
+def draw_chart(df: pd.DataFrame, spec: ChartSpec | None, previous: pd.DataFrame | None = None, key: str = ""):
+    """KPI tiles, a chart, or nothing (the caller shows the table)."""
+    if spec is None:
+        return False
+    if spec.kind == "kpi":
+        row = df.iloc[0]
+        prev = previous.iloc[0] if previous is not None and not previous.empty else None
+        cols = st.columns(len(spec.y))
+        for col, name in zip(cols, spec.y):
+            delta = None
+            if prev is not None and pd.notna(prev.get(name)) and prev.get(name):
+                delta = f"{100 * (row[name] - prev[name]) / abs(prev[name]):+.1f}% vs previous year"
+            label = f"{name} · {row[spec.x]}" if spec.x else name
+            col.metric(label, fmt_number(row[name]), delta)
+        return True
+    st.altair_chart(build_chart(spec, df), width="stretch", key=key or None)
+    return True
+
+
+def draw_tile(tile: Tile, executor: Executor, params: dict | None, key: str, on_remove=None):
+    with st.container(border=True):
+        head, tools = st.columns([6, 1])
+        head.markdown(f"**{tile.title}**")
+        if on_remove and tools.button("✕", key=f"rm_{key}", help="Remove from dashboard"):
+            on_remove()
+            st.rerun()
+        res = run_tile(executor, tile, params)
+        if res.error:
+            st.error(res.error)
+        elif res.df.empty:
+            st.info("No data for this selection.")
+        elif not draw_chart(res.df, res.chart, res.previous, key=f"chart_{key}"):
+            st.dataframe(res.df, width="stretch", hide_index=True)
+        if tile.caption:
+            st.caption(tile.caption)
+        with st.expander("SQL"):
+            st.code(tile.sql, language="sql")
+
+
+def draw_dashboard(dash: Dashboard, executor: Executor, params: dict | None, key: str, removable: bool = False):
+    i, tiles = 0, dash.tiles
+    while i < len(tiles):  # full-width tiles get a row; half tiles are paired
+        row = [tiles[i]] if tiles[i].width == "full" or i + 1 >= len(tiles) or tiles[i + 1].width == "full" \
+            else [tiles[i], tiles[i + 1]]
+        cols = st.columns(len(row)) if len(row) > 1 else [st.container()]
+        for j, (col, tile) in enumerate(zip(cols, row)):
+            idx = i + j
+            with col:
+                draw_tile(tile, executor, params, key=f"{key}_{idx}",
+                          on_remove=(lambda idx=idx: st.session_state.pins.pop(idx)) if removable else None)
+        i += len(row)
+
+
+chat_tab, dash_tab, schema_tab, bench_tab = st.tabs(["Ask", "Dashboard", "Schema", "Benchmark"])
 
 # ------------------------------------------------------------------ chat
 with chat_tab:
     st.title("SQL Chat Assistant v2")
     st.caption("Plain-English questions → validated, read-only SQL → results. Every step is shown.")
 
-    if "history" not in st.session_state:
-        st.session_state.history = []
-
-    def show(res):
+    def show(res, idx: int | None = None):
         if res.ok:
             df = pd.DataFrame(res.result.rows, columns=res.result.columns)
-            st.dataframe(df, width="stretch", hide_index=True)
+            spec = suggest_chart(df)
+            if draw_chart(df, spec, key=f"ask_{idx}"):
+                with st.expander(f"Table · {len(df):,} rows"):
+                    st.dataframe(df, width="stretch", hide_index=True)
+            else:
+                st.dataframe(df, width="stretch", hide_index=True)
             if res.result.truncated:
                 st.caption("Showing the first 1,000 rows.")
-            num = df.select_dtypes("number").columns
-            if len(df.columns) == 2 and len(num) == 1 and 1 < len(df) <= 50 and df.columns[0] not in num:
-                st.bar_chart(df.set_index(df.columns[0]))
+            if idx is not None:
+                pinned = any(p.sql == res.sql for p in st.session_state.pins)
+                if st.button("📌 Pinned" if pinned else "📌 Pin to dashboard", key=f"pin_{idx}", disabled=pinned):
+                    st.session_state.pins.append(Tile(title=res.question, sql=res.sql,
+                                                      chart=spec, width="full" if spec and spec.kind == "line" else "half"))
+                    st.toast("Added to My dashboard")
+                    st.rerun()
         else:
             st.error(f"Could not answer: {res.result.error if res.result else 'unknown error'}")
         st.code(res.sql or "", language="sql")
@@ -86,11 +154,11 @@ with chat_tab:
                 if s.kind == "generate":
                     st.code(s.sql, language="sql")
 
-    for q, res in st.session_state.history:
+    for i, (q, res) in enumerate(st.session_state.history):
         with st.chat_message("user"):
             st.write(q)
         with st.chat_message("assistant"):
-            show(res)
+            show(res, i)
 
     if not st.session_state.history and db_path == DEMO_DB:
         st.markdown("**Try:** _Which 5 customers placed the most orders?_ · "
@@ -118,7 +186,7 @@ with chat_tab:
                     res = None
                     if type(e).__name__ == "RateLimitError":
                         st.warning("The demo's free model quota is used up for now. Please try again later. "
-                                   "Meanwhile, the Benchmark tab shows how the agent scores.")
+                                   "Meanwhile, the Dashboard tab works without the model.")
                     else:
                         st.error(f"The model API returned an error ({type(e).__name__}). Please try again.")
                 if res is not None:
@@ -127,9 +195,45 @@ with chat_tab:
                 st.session_state.history.append((question, res))
                 st.rerun()  # refresh the "questions left" counter
 
+# ------------------------------------------------------------------ dashboard
+with dash_tab:
+    executor = Executor(db_path)
+    views = (["Business overview"] if db_path == DEMO_DB else []) + [f"My dashboard ({len(st.session_state.pins)})"]
+    view = st.radio("View", views, horizontal=True, label_visibility="collapsed")
+
+    if view == "Business overview":
+        overview = load_dashboard(OVERVIEW)
+        top, pick = st.columns([4, 1])
+        top.subheader(overview.title)
+        years = filter_options(executor, overview, "year")
+        year = pick.selectbox("Year", ["All years", *years], index=len(years))  # latest year by default
+        st.caption(overview.description)
+        draw_dashboard(overview, executor, {"year": None if year == "All years" else year}, key="ov")
+    else:
+        st.subheader("My dashboard")
+        pins = st.session_state.pins
+        if not pins:
+            st.info("Ask a question, then click **📌 Pin to dashboard** under the answer. Your charts collect here.")
+        else:
+            draw_dashboard(Dashboard("My dashboard", pins), executor, None, key="my", removable=True)
+        st.divider()
+        c1, c2, c3 = st.columns(3)
+        c1.download_button("⬇ Export as JSON", Dashboard("My dashboard", pins).to_json(),
+                           file_name="dashboard.json", mime="application/json", disabled=not pins)
+        if c2.button("Clear all", disabled=not pins):
+            st.session_state.pins = []
+            st.rerun()
+        imported = c3.file_uploader("Import a dashboard JSON", type=["json"], label_visibility="collapsed")
+        if imported is not None and st.session_state.get("_imported") != imported.file_id:
+            try:
+                st.session_state.pins = parse_dashboard(imported.getvalue().decode("utf-8")).tiles
+                st.session_state._imported = imported.file_id
+                st.rerun()
+            except (ValueError, UnicodeDecodeError, KeyError) as e:
+                st.error(f"Could not import: {e}")
+
 # ------------------------------------------------------------------ schema
 with schema_tab:
-    from sqlagent.executor import Executor
     from sqlagent.schema import introspect, render, render_glossary
 
     conn = Executor(db_path).connect()

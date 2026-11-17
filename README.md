@@ -29,8 +29,19 @@ question
 | `sqlagent/executor.py` | Runs the query read-only, with a timeout and a row cap |
 | `sqlagent/prompts.py` | Prompts. The few-shot examples use a *different* schema, so they can't leak benchmark answers |
 | `sqlagent/llm.py` | Groq client with rate-limit backoff, plus a scripted client for offline tests |
+| `sqlagent/viz.py` | Picks a chart from the result's shape: number tiles, line, bar or scatter |
+| `sqlagent/dashboard.py` | Loads, checks and runs dashboards (JSON lists of SQL tiles) |
 
 **Safety is layered.** A `DELETE` gets past the guard only if the guard has a bug. Even then, the connection is opened read-only (`mode=ro` + `PRAGMA query_only`), so the write fails. The test suite checks this by running a `DELETE` with the guard skipped.
+
+## Dashboards
+
+![Business overview dashboard](docs/dashboard.png)
+
+- **Automatic charts:** every answer gets a chart that fits its result. One row of numbers becomes number tiles, a date column becomes a line chart, and a label column with values becomes a sorted bar chart (grouped bars when several values share a scale). Two number columns become a scatter plot. A revenue figure and a growth % are never put on the same axis.
+- **Business overview:** a ready-made dashboard (`dashboards/overview.json`) with a year filter and key figures showing the change from the previous year. It runs fixed SQL with no AI calls, so it still works when the model quota is used up. Its revenue matches the benchmark's correct answer exactly, and a test checks this.
+- **My dashboard:** click **📌 Pin to dashboard** under any answer to add it. You can export the dashboard as JSON and import it again later.
+- **Same safety rules:** every dashboard tile goes through the same SQL check and read-only connection as the agent's queries. An imported dashboard containing `DELETE` or `DROP` is rejected.
 
 ## The benchmark
 
@@ -90,9 +101,9 @@ pip install -r requirements.txt
 export GROQ_API_KEY=...                  # free key at console.groq.com
 
 python bench/build_db.py                 # builds bench/retail.db (deterministic)
-pytest                                   # 26 tests, no API key needed
+pytest                                   # 29 tests, no API key needed
 python -m bench.evaluate                 # full benchmark: 4 configs × 45 questions
-streamlit run app.py                     # chat UI with agent trace + benchmark tab
+streamlit run app.py                     # chat, dashboards, agent trace, benchmark tab
 ```
 
 To see which models your key can use:
