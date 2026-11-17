@@ -62,16 +62,24 @@ The report also includes: how often the query executes, how many questions self-
 
 ### Results
 
-> Run `python -m bench.evaluate` and paste the table from `bench/results/<run>/report.md` here.
+Model `openai/gpt-oss-120b` on Groq, temperature 0. One complete run, all 45 questions scored for each config. Full report: [`bench/results/20261117-0923_groq_openai_gpt-oss-120b/report.md`](bench/results/20261117-0923_groq_openai_gpt-oss-120b/report.md)
 
-| Config | Overall | Easy | Medium | Hard |
-|---|---|---|---|---|
-| baseline | | | | |
-| context | | | | |
-| fewshot | | | | |
-| full | | | | |
+| Config | Overall | Easy (15) | Medium (18) | Hard (12) | Avg prompt tokens |
+|---|---|---|---|---|---|
+| baseline | **64.4%** | 93.3% | 61.1% | 33.3% | 639 |
+| context (+ sample rows, glossary) | **97.8%** | 100% | 100% | 91.7% | 1,378 |
+| fewshot (+ examples) | **100%** | 100% | 100% | 100% | 1,891 |
+| full (+ schema linking, self-correction) | **100%** | 100% | 100% | 100% | 1,571 |
 
-Schema linking keeps every gold table on all 45 questions (100% recall). It cuts the prompt from 7 tables to 4.4 on average. That doesn't need an LLM to measure; the test suite checks it.
+**What the results show**
+
+- **Business definitions, not SQL skill, were the biggest gap.** I read every SQL query the baseline got wrong. 14 of its 16 failures were valid SQL that answered the wrong business question. 13 summed revenue, units sold or profit over *all* orders, including cancelled and returned ones. One counted the regional managers as sales reps. Of the other two, one used `'Cancelled'` where the data stores `'cancelled'` (fixed by showing sample rows), and one was a real SQL error. Adding sample rows and the glossary raised accuracy from 64.4% to 97.8%.
+- **Context can overreach.** With the glossary, the model applied the "delivered/shipped only" rule to h05, a question about *any* order, and got it wrong. The few-shot examples fixed this.
+- **Schema linking saves tokens without losing accuracy.** `full` matches `fewshot` at 100% with 17% fewer prompt tokens (4.4 of 7 tables per prompt), and every table each gold query needs is kept.
+- **Self-correction was never triggered.** gpt-oss-120b wrote no query that crashed. Self-correction is a safety net for weaker models and bigger schemas. The test suite checks that it works.
+- **The benchmark is at its ceiling for this model.** Two configs score 100%, so it can't rank them. Separating them needs harder questions, a weaker model or Spider (see below).
+
+Latency isn't compared: Groq's free tier rate-limits requests, so the timings mostly measure waiting.
 
 ## Run it
 
