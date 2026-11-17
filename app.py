@@ -39,6 +39,11 @@ with st.sidebar:
                           help="Same presets the benchmark compares")
     model = st.text_input("Groq model", os.getenv("GROQ_MODEL", "openai/gpt-oss-120b"))
     if not os.getenv("GROQ_API_KEY"):
+        try:  # Streamlit Cloud: key comes from the app's Secrets
+            os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
+        except Exception:  # no secrets file locally
+            pass
+    if not os.getenv("GROQ_API_KEY"):
         key = st.text_input("GROQ_API_KEY", type="password")
         if key:
             os.environ["GROQ_API_KEY"] = key
@@ -92,7 +97,13 @@ with chat_tab:
                     "_What was the revenue for each month of 2024?_ · "
                     "_Which sales rep generated the most revenue in each region?_")
 
-    question = st.chat_input("Ask a question about the data")
+    # Public demo guard: set DEMO_MAX_QUESTIONS (e.g. in Streamlit secrets) to cap questions per visitor,
+    # so one visitor can't spend the whole daily Groq quota.
+    max_q = int(os.getenv("DEMO_MAX_QUESTIONS", "0") or 0)
+    used = len(st.session_state.history)
+    if max_q:
+        st.caption(f"Demo limit: {max_q - used} of {max_q} questions left in this session.")
+    question = st.chat_input("Ask a question about the data", disabled=bool(max_q) and used >= max_q)
     if question:
         if not os.getenv("GROQ_API_KEY"):
             st.warning("Add a GROQ_API_KEY in the sidebar first.")
@@ -101,9 +112,20 @@ with chat_tab:
             with st.chat_message("user"):
                 st.write(question)
             with st.chat_message("assistant"), st.spinner("Thinking…"):
-                res = agent.run(question)
-                show(res)
-            st.session_state.history.append((question, res))
+                try:
+                    res = agent.run(question)
+                except Exception as e:  # API trouble shouldn't show a stack trace to visitors
+                    res = None
+                    if type(e).__name__ == "RateLimitError":
+                        st.warning("The demo's free model quota is used up for now. Please try again later. "
+                                   "Meanwhile, the Benchmark tab shows how the agent scores.")
+                    else:
+                        st.error(f"The model API returned an error ({type(e).__name__}). Please try again.")
+                if res is not None:
+                    show(res)
+            if res is not None:
+                st.session_state.history.append((question, res))
+                st.rerun()  # refresh the "questions left" counter
 
 # ------------------------------------------------------------------ schema
 with schema_tab:

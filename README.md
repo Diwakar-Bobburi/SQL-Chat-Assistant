@@ -118,6 +118,18 @@ python -m bench.evaluate --questions bench/questions_spider.json --configs basel
 
 - **v1.1:** h07 was ambiguous. Products launched in 2025 have no 2024 revenue, and the gold query counted them (0 × 3 = 0). gpt-oss-120b read "their 2024 revenue" as "had 2024 sales". The question now says so explicitly ("revenue in both 2024 and 2025"), and the gold query returns 10 rows instead of 13. Found by inspecting a consistent model "failure", which is why failures in the report should be read, not just counted.
 
+## Deploy (Streamlit Community Cloud)
+
+1. At share.streamlit.io, create an app: repo `Diwakar-Bobburi/SQL-Chat-Assistant`, branch `v2`, main file `app.py`.
+2. Under **Advanced settings → Secrets**, add:
+   ```toml
+   GROQ_API_KEY = "your-key"
+   DEMO_MAX_QUESTIONS = "10"
+   ```
+   `DEMO_MAX_QUESTIONS` limits how many questions each visitor can ask, so one visitor can't use up the free daily Groq quota. If the quota does run out, visitors see a friendly message instead of an error.
+
+The demo database is built automatically on first start.
+
 ## Limitations
 
 - 45 questions is small. A 2-question difference between configs is noise, so compare configs on Spider before claiming anything.
